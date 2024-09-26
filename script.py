@@ -39,104 +39,85 @@ def scroll_page(browser, duration):
 
         last_height = new_height  # Update the last height for the next check
 
-def main(search_queries, iterations, locations):
-    # Create a Chrome browser instance with location settings
+def main(search_queries, iterations):
+    # Create a Chrome browser instance with options
     options = Options()
     options.add_argument("--start-maximized")  # Start Chrome in maximized mode
-    options.add_argument(f"--geo-provider=none")  # Disable geo provider
-    options.add_argument(f"--enable-geolocation")  # Enable geolocation
 
     # Create a browser instance
     browser = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-    for location in locations:
-        print(f"Searching from location: {location['city']}, {location['state']} ({location['lat']}, {location['lon']})")
-        
-        # Set the location for geolocation
-        browser.get("https://www.google.com/")
-        time.sleep(2)  # Wait for the page to load
-        browser.execute_script(f"navigator.geolocation.getCurrentPosition = function(success) {{ "
-                               f"success({{ coords: {{ latitude: {location['lat']}, longitude: {location['lon']} }} }}); }}")
+    for i in range(iterations):
+        for query in search_queries:
+            print(f"Iteration {i + 1}: Searching for '{query}'...")
 
-        for i in range(iterations):
-            for query in search_queries:
-                print(f"Iteration {i + 1}: Searching for '{query}'...")
+            # Load the Google homepage
+            browser.get('https://www.google.com')
 
-                # Load the Google homepage
-                browser.get('https://www.google.com')
+            # Search for the given query
+            search_box = browser.find_element(By.NAME, 'q')
+            search_box.send_keys(query + Keys.RETURN)
 
-                # Search for the given query
-                search_box = browser.find_element(By.NAME, 'q')
-                search_box.send_keys(query + Keys.RETURN)
+            # Wait for search results to load
+            time.sleep(3)
 
-                # Wait for search results to load
-                time.sleep(3)
+            # Initialize a variable to track if the target URL was found
+            target_found = False
 
-                # Initialize a variable to track if the target URL was found
-                target_found = False
-
-                while not target_found:
-                    # Attempt to find the link that contains "hireremotestars.com"
+            while not target_found:
+                # Attempt to find the link that contains "hireremotestars.com"
+                try:
+                    first_result = browser.find_element(By.XPATH, "//a[contains(@href, 'hireremotestars.com/hire-remote-software-developers')]")
+                    print("Found the target link, clicking...")
+                    first_result.click()
+                    target_found = True  # Set to true once the target is found
+                except Exception as e:
+                    print("Target link not found on this page. Checking next page...")
                     try:
-                        first_result = browser.find_element(By.XPATH, "//a[contains(@href, 'hireremotestars.com')]")
-                        print("Found the target link, clicking...")
-                        first_result.click()
-                        target_found = True  # Set to true once the target is found
+                        # Check for the "Next" button to navigate to the next search results page
+                        next_button = browser.find_element(By.XPATH, "//a[@id='pnnext']")
+                        next_button.click()
+                        time.sleep(3)  # Wait for the new page to load
                     except Exception as e:
-                        print("Target link not found on this page. Checking next page...")
-                        try:
-                            # Check for the "Next" button to navigate to the next search results page
-                            next_button = browser.find_element(By.XPATH, "//a[@id='pnnext']")
-                            next_button.click()
-                            time.sleep(3)  # Wait for the new page to load
-                        except Exception as e:
-                            print("No more pages available or an error occurred.")
-                            break  # Exit the loop if there are no more pages
+                        print("No more pages available or an error occurred.")
+                        break  # Exit the loop if there are no more pages
 
-                # Wait for the website to load if the target was found
-                if target_found:
-                    time.sleep(5)
+            # Wait for the website to load if the target was found
+            if target_found:
+                time.sleep(5)
 
-                    # Scroll the website for 1 minute with slower speed
-                    scroll_page(browser, 60)
+                # Scroll the website for 1 minute with slower speed
+                scroll_page(browser, 60)
 
-                    # Visit other website pages by clicking buttons/links
-                    links = browser.find_elements(By.TAG_NAME, 'a')  # Find all links on the page
-                    for link in links:
-                        try:
-                            link.click()  # Click the link
-                            time.sleep(3)  # Wait for the new page to load
+                # Visit other website pages by clicking buttons/links
+                links = browser.find_elements(By.TAG_NAME, 'a')  # Find all links on the page
+                for link in links:
+                    try:
+                        link.click()  # Click the link
+                        time.sleep(3)  # Wait for the new page to load
 
-                            # Scroll the new page for 1 minute with slower speed
-                            scroll_page(browser, 60)
+                        # Scroll the new page for 1 minute with slower speed
+                        scroll_page(browser, 60)
 
-                            # Go back to the previous page after interacting with the new page
-                            browser.back()
-                            time.sleep(3)
-                        except Exception as e:
-                            print(f"Error clicking link: {e}")
-                            continue
+                        # Go back to the previous page after interacting with the new page
+                        browser.back()
+                        time.sleep(3)
+                    except Exception as e:
+                        print(f"Error clicking link: {e}")
+                        continue
 
-            # Open a new tab for the next iteration
-            if i < iterations - 1 or query != search_queries[-1]:  # Avoid opening a new tab after the last iteration
-                browser.execute_script("window.open('');")  # Open a new tab
-                browser.switch_to.window(browser.window_handles[-1])  # Switch to the new tab
+        # Open a new tab for the next iteration
+        if i < iterations - 1 or query != search_queries[-1]:  # Avoid opening a new tab after the last iteration
+            browser.execute_script("window.open('');")  # Open a new tab
+            browser.switch_to.window(browser.window_handles[-1])  # Switch to the new tab
 
     # Close the browser after all tasks are completed
     browser.quit()
 
 if __name__ == "__main__":
     # Get parameters from command line arguments
-    queries = "hire remote developers at remote stars, hireremotestars, hire remote stars"  # Default search queries
-    iterations = 10  # Default number of iterations
-    locations = [
-        {"city": "New York", "state": "NY", "lat": 40.7128, "lon": -74.0060},
-        {"city": "San Francisco", "state": "CA", "lat": 37.7749, "lon": -122.4194},
-        {"city": "Chicago", "state": "IL", "lat": 41.8781, "lon": -87.6298},
-        {"city": "Houston", "state": "TX", "lat": 29.7604, "lon": -95.3698},
-        {"city": "Miami", "state": "FL", "lat": 25.7617, "lon": -80.1918}
-    ]  # List of locations to simulate
-
+    queries = "hire remote software developers at hire remote stars"  # Default search queries
+    iterations = 50  # Default number of iterations
 
     if len(sys.argv) > 1:
         queries = sys.argv[1]  # Take the first argument as the search queries
@@ -145,4 +126,4 @@ if __name__ == "__main__":
 
     # Split the queries into a list
     search_queries = [query.strip() for query in queries.split(',')]
-    main(search_queries, iterations, locations)
+    main(search_queries, iterations)
