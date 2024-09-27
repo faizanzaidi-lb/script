@@ -39,7 +39,7 @@ def scroll_page(browser, duration):
 
         last_height = new_height  # Update the last height for the next check
 
-def main(search_queries, iterations):
+def run_search(search_queries, iterations):
     # Create a Chrome browser instance with options
     options = Options()
     options.add_argument("--start-maximized")  # Start Chrome in maximized mode
@@ -114,10 +114,23 @@ def main(search_queries, iterations):
     # Close the browser after all tasks are completed
     browser.quit()
 
+def main(search_queries, iterations):
+    while True:
+        try:
+            run_search(search_queries, iterations)
+            print("Browser quit. Restarting script...")
+
+            # Optional delay before restarting
+            time.sleep(10)  # Wait 10 seconds before restarting (you can change the delay as needed)
+
+        except Exception as e:
+            print(f"An error occurred: {e}. Retrying in 10 seconds...")
+            time.sleep(10)  # Delay before retrying
+
 if __name__ == "__main__":
     # Get parameters from command line arguments
     queries = "hire remote software developers at hire remote stars"  # Default search queries
-    iterations = 50  # Default number of iterations
+    iterations = 1  # Default number of iterations
 
     if len(sys.argv) > 1:
         queries = sys.argv[1]  # Take the first argument as the search queries
